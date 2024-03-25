@@ -178,10 +178,10 @@ class HumanOutputFormat(KVWriter, SeqWriter):
                 key = str("   " + key[len(tag) :])
 
             truncated_key = self._truncate(key)
-            if truncated_key in key2str:
-                raise ValueError(
-                    f"Key '{key}' truncated to '{truncated_key}' that already exists. Consider increasing `max_length`."
-                )
+            # if truncated_key in key2str:
+            #     raise ValueError(
+            #         f"Key '{key}' truncated to '{truncated_key}' that already exists. Consider increasing `max_length`."
+            #     )
             key2str[truncated_key] = self._truncate(value_str)
 
         # Find max widths
