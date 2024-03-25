@@ -404,7 +404,7 @@ class Logger:
                 else:
                     assert False, f"Invalid data type {type(v)} for key {k}"
 
-            wandbdict["step"] = step
+            wandbdict["global_step"] = step
             wandbdict["epoch"] = epoch
             wandb.log(wandbdict)
 

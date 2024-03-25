@@ -565,7 +565,7 @@ class RecurrentPPO(OnPolicyAlgorithm):
                 # Display training infos (mine via helper)
                 self.helper.state.step = int(self.num_timesteps)
                 helper_logs = {
-                    "step": self.helper.state.step,
+                    "global_step": self.helper.state.step,
                     "time/iterations": iteration,
                     "time/fps": fps,
                     "time/time_elapsed": int(time.time() - self.start_time),
