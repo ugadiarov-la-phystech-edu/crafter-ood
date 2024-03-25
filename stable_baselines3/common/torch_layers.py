@@ -120,7 +120,7 @@ class I2SFeatureExtractor(BaseFeaturesExtractor):
         # Pre-CNN map (e.g. mixing channels but keeping dim as in SlotAttn)
         self.precnn = None
         if self.precnn_type == 'cnn-sa':
-            self.precnn = CNNSA(n_input_channels, d_out=args.fe.precnn.d_out)
+            self.precnn = CNNSA(n_input_channels, d_out=args.fe.precnn.d_out).to('cuda')
             n_input_channels = args.fe.precnn.d_out
             self._features_dim = args.fe.precnn.d_out  # Base-class argument used by external code
                 
@@ -134,13 +134,13 @@ class I2SFeatureExtractor(BaseFeaturesExtractor):
                 nn.ReLU(),
                 nn.Conv2d(64, args.fe.cnnmap.d_out, kernel_size=3, stride=1, padding=0),
                 nn.ReLU(),
-            )
+            ).to('cuda')
         elif self.cnnmap_type == 'cnn-sa':
-            self.cnn = CNNSA(n_input_channels, d_out = args.fe.cnnmap.d_out)
+            self.cnn = CNNSA(n_input_channels, d_out = args.fe.cnnmap.d_out).to('cuda')
         
         if self.precnn is not None or self.cnn is not None:
             with th.no_grad():
-                sample = th.as_tensor(observation_space.sample()[None]).float()
+                sample = th.as_tensor(observation_space.sample()[None]).float().to('cuda')
                 if self.precnn is not None:
                     sample = self.precnn(sample)
                 if self.image2patch_manual():
@@ -159,7 +159,7 @@ class I2SFeatureExtractor(BaseFeaturesExtractor):
         if self.outmap_type == 'linear':
             self.outmap = nn.Sequential(
                 nn.Linear(self._features_dim, args.fe.outmap.d_out), 
-                nn.ReLU())
+                nn.ReLU()).to('cuda')
 
         if self.outmap is not None:
             self._features_dim = args.fe.outmap.d_out
@@ -168,10 +168,10 @@ class I2SFeatureExtractor(BaseFeaturesExtractor):
         self.rsn = None
         self.reduce_slots = False
         if self.rsn_type == 'oc_sa':
-            self.rsn = ObjectCentricSelfAttention(args, d_obj_latents=self._features_dim)
+            self.rsn = ObjectCentricSelfAttention(args, d_obj_latents=self._features_dim).to('cuda')
             self._features_dim = self.rsn.d_output
         elif self.rsn_type == 'oc_ca':
-            self.rsn = ObjectCentricCrossAttention(args.oc_ca, d_input=self._features_dim)
+            self.rsn = ObjectCentricCrossAttention(args.oc_ca, d_input=self._features_dim).to('cuda')
             self._features_dim = self.rsn.d_slot
             self.reduce_slots = True
     

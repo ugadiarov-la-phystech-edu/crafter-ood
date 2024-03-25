@@ -101,13 +101,15 @@ class RLTaskCRF:
             model = sb3.RecurrentPPO(
                 self.helper,
                 self.env_train,
-                verbose=1
+                verbose=1,
+                device='cuda',
             )
         else:
             model = sb3.PPO(
                 self.helper,
                 self.env_train,
-                verbose=1
+                verbose=1,
+                device='cuda',
             )
         return model
 
