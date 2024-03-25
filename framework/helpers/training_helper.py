@@ -36,13 +36,23 @@ class TrainingHelper:
     class Dirs:
         pass
 
+    class DistEnvStub:
+        is_distributed = False
+        world_size = None
+        job_id = None
+
+        @staticmethod
+        def is_master():
+            return True
+
     def __init__(self, register_args, extra_dirs=[]):
 
         self.is_sweep = False
         self.all_dirs = ["checkpoint", "tensorboard"] + extra_dirs
         self.create_parser()
-        self.dist_env = SLURMEnv()
-        self.dist_env.init_env()
+        self.dist_env = self.DistEnvStub()
+        # self.dist_env = SLURMEnv()
+        # self.dist_env.init_env()
 
         if register_args is not None:
             register_args(self.arg_parser)
