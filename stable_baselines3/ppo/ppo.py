@@ -1,5 +1,6 @@
 import warnings
 from typing import Any, Dict, Optional, Type, Union
+import time
 
 import numpy as np
 import torch as th
@@ -9,7 +10,7 @@ from torch.nn import functional as F
 from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
-from stable_baselines3.common.utils import explained_variance, get_schedule_fn
+from stable_baselines3.common.utils import explained_variance, get_schedule_fn, safe_mean
 
 
 class PPO(OnPolicyAlgorithm):
@@ -335,16 +336,61 @@ class PPO(OnPolicyAlgorithm):
         eval_log_path: Optional[str] = None,
         reset_num_timesteps: bool = True,
     ) -> "PPO":
+        iteration = 0
 
-        return super(PPO, self).learn(
-            total_timesteps=total_timesteps,
-            callback=callback,
-            log_interval=log_interval,
-            eval_env_det=eval_env_det,
-            eval_env_sto=eval_env_sto,
-            eval_freq=eval_freq,
-            n_eval_episodes=n_eval_episodes,
-            tb_log_name=tb_log_name,
-            eval_log_path=eval_log_path,
-            reset_num_timesteps=reset_num_timesteps,
+        total_timesteps, callback = self._setup_learn(
+            total_timesteps, eval_env_det, eval_env_sto, callback, eval_freq, n_eval_episodes, eval_log_path, reset_num_timesteps, tb_log_name
         )
+
+        callback.on_training_start(locals(), globals())
+
+        while self.num_timesteps < total_timesteps:
+
+            continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
+            if continue_training is False:
+                break
+
+            iteration += 1
+            self._update_current_progress_remaining(self.num_timesteps, total_timesteps)
+
+            if log_interval is not None and iteration % log_interval == 0:
+                fps = int((self.num_timesteps - self._num_timesteps_at_start) / (time.time() - self.start_time))
+                # Display training infos (native stable-baselines3)
+                self.logger.record("time/iterations", iteration, exclude="tensorboard")
+                if len(self.ep_info_buffer) > 0 and len(self.ep_info_buffer[0]) > 0:
+                    self.logger.record("rollout/ep_rew_mean", safe_mean([ep_info["r"] for ep_info in self.ep_info_buffer]))
+                    self.logger.record("rollout/ep_len_mean", safe_mean([ep_info["l"] for ep_info in self.ep_info_buffer]))
+                if len(self.ep_success_buffer) == self.ep_success_buffer.maxlen:
+                    self.logger.record("rollout/success_rate", safe_mean(self.ep_success_buffer))
+                self.logger.record("time/fps", fps)
+                self.logger.record("time/time_elapsed", int(time.time() - self.start_time), exclude="tensorboard")
+                self.logger.record("time/total_timesteps", self.num_timesteps, exclude="tensorboard")
+                self.logger.dump(step=self.num_timesteps)
+
+                # Display training infos (mine via helper)
+                self.helper.state.step = int(self.num_timesteps)
+                helper_logs = {
+                    "step": self.helper.state.step,
+                    "time/iterations": iteration,
+                    "time/fps": fps,
+                    "time/time_elapsed": int(time.time() - self.start_time),
+                    "time/total_timesteps": self.num_timesteps,
+                }
+                if len(self.ep_info_buffer) > 0 and len(self.ep_info_buffer[0]) > 0:
+                    logs_add = {
+                        "rollout/ep_rew_mean": safe_mean([ep_info["r"] for ep_info in self.ep_info_buffer]),
+                        "rollout/ep_len_mean": safe_mean([ep_info["l"] for ep_info in self.ep_info_buffer]),
+                    }
+                    helper_logs.update(logs_add)
+                if len(self.ep_success_buffer) > 0:
+                    logs_add = {
+                        "rollout/success_rate": safe_mean(self.ep_success_buffer),
+                    }
+                    helper_logs.update(logs_add)
+                self.helper.log(helper_logs, step=self.helper.state.step)
+
+            self.train()
+
+        callback.on_training_end()
+
+        return self

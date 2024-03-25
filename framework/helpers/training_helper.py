@@ -153,6 +153,8 @@ class TrainingHelper:
 
         wandb_args = {
             "project": self.wandb_project_name,
+            "group": self.args.wandb_group,
+            "name": self.args.wandb_run_name,
             "config": self.arg_parser.to_dict(),
             "sync_tensorboard": self.args.logger.sb3.sync_tb,  # auto-upload sb3's tensorboard metrics
             "monitor_gym": self.args.logger.sb3.monitor_gym,  # auto-upload the videos of agents playing the game

@@ -1,12 +1,44 @@
 import os
 
-import crafter
+import cv2
+import gym
+import numpy as np
+
+# import crafter
+import shapes2d
 import stable_baselines3 as sb3
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.base_class import BaseAlgorithm
 
 import framework
+
+
+class WarpFrame(gym.ObservationWrapper):
+    def __init__(self, env: gym.Env, width: int = 64, height: int = 64):
+        gym.ObservationWrapper.__init__(self, env)
+        self.width = width
+        self.height = height
+        self.observation_space = gym.spaces.Box(
+            low=0, high=255, shape=(self.height, self.width, env.observation_space.shape[2]),
+            dtype=env.observation_space.dtype
+        )
+
+    def observation(self, frame: np.ndarray) -> np.ndarray:
+        frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_CUBIC)
+        return frame
+
+
+class FailOnTimelimitWrapper(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+    def step(self, action):
+        observation, reward, done, info = super().step(action)
+        if done and 'is_success' not in info:
+            info['is_success'] = False
+
+        return observation, reward, done, info
 
 
 class RLTaskCRF:
@@ -17,49 +49,64 @@ class RLTaskCRF:
         self.env_valid_stochastic = self.create_valid_env(env_prefix='valid_sto', log_every_n_episodes=1)
         self.model = self.create_model()
         framework.helpers.model_info.print_model_size(self.model.policy)
-    
-    def create_train_env(self):
-        return self.create_single_env(env_prefix='train', el_vars=self.helper.args.el_vars, el_freq=self.helper.args.el_freq_train, el_app_freq=self.helper.args.el_app_freq_train)
-    
-    def create_valid_env(self, env_prefix, save_video=False, log_every_n_episodes=None):
-        return self.create_single_env(env_prefix=env_prefix, seed=0, save_video=save_video, log_every_n_episodes=log_every_n_episodes, 
-                                        el_vars=self.helper.args.el_vars, el_freq=self.helper.args.el_freq_valid, el_app_freq=self.helper.args.el_app_freq_valid)
 
-    def create_single_env(self, env_prefix='train', seed=None, save_video=False, log_every_n_episodes=None, el_vars='', el_freq='100,0,0,0', el_app_freq='sssss'):
-        env = crafter.Env(
-            size=(self.helper.args.crf.size, self.helper.args.crf.size), 
-            render_scoreboard=self.helper.args.crf.render_scoreboard,
-            seed=seed,
-            length=self.helper.args.crf.max_ep_len,
-            el_vars=el_vars,
-            el_freq=el_freq,
-            el_app_freq=el_app_freq,
-        )
-        env = crafter.Recorder(
-            env,
-            os.path.join(self.helper.save_dir, f'crafter-episodes-{env_prefix}'),
-            self.helper,
-            env_prefix=env_prefix,
-            save_stats=True,
-            save_video=save_video,
-            save_episode=False,
-            log_every_n_episodes=log_every_n_episodes,
-        )
+    def create_train_env(self):
+        return self.create_single_env(env_prefix='train', seed=self.helper.args.seed, el_vars=self.helper.args.el_vars,
+                                      el_freq=self.helper.args.el_freq_train,
+                                      el_app_freq=self.helper.args.el_app_freq_train)
+
+    def create_valid_env(self, env_prefix, save_video=False, log_every_n_episodes=None):
+        return self.create_single_env(env_prefix=env_prefix, seed=self.helper.args.seed + 1, save_video=save_video,
+                                      log_every_n_episodes=log_every_n_episodes,
+                                      el_vars=self.helper.args.el_vars, el_freq=self.helper.args.el_freq_valid,
+                                      el_app_freq=self.helper.args.el_app_freq_valid)
+
+    def create_single_env(self, env_prefix='train', seed=None, save_video=False, log_every_n_episodes=None, el_vars='',
+                          el_freq='100,0,0,0', el_app_freq='sssss'):
+        env = gym.make(self.helper.args.task)
+        env = WarpFrame(env, width=self.helper.args.crf.size, height=self.helper.args.crf.size)
+        env = FailOnTimelimitWrapper(env)
+        env.seed(seed)
+
         env = BaseAlgorithm._wrap_env(env)
         env = VecFrameStack(env, n_stack=1, n_skip=1)
         return env
 
+    # def create_single_env(self, env_prefix='train', seed=None, save_video=False, log_every_n_episodes=None, el_vars='', el_freq='100,0,0,0', el_app_freq='sssss'):
+    #     env = crafter.Env(
+    #         size=(self.helper.args.crf.size, self.helper.args.crf.size),
+    #         render_scoreboard=self.helper.args.crf.render_scoreboard,
+    #         seed=seed,
+    #         length=self.helper.args.crf.max_ep_len,
+    #         el_vars=el_vars,
+    #         el_freq=el_freq,
+    #         el_app_freq=el_app_freq,
+    #     )
+    #     env = crafter.Recorder(
+    #         env,
+    #         os.path.join(self.helper.save_dir, f'crafter-episodes-{env_prefix}'),
+    #         self.helper,
+    #         env_prefix=env_prefix,
+    #         save_stats=True,
+    #         save_video=save_video,
+    #         save_episode=False,
+    #         log_every_n_episodes=log_every_n_episodes,
+    #     )
+    #     env = BaseAlgorithm._wrap_env(env)
+    #     env = VecFrameStack(env, n_stack=1, n_skip=1)
+    #     return env
+
     def create_model(self):
         if self.helper.args.ppo.recurrent:
             model = sb3.RecurrentPPO(
-                self.helper, 
-                self.env_train, 
+                self.helper,
+                self.env_train,
                 verbose=1
             )
         else:
             model = sb3.PPO(
-                self.helper, 
-                self.env_train, 
+                self.helper,
+                self.env_train,
                 verbose=1
             )
         return model
@@ -81,13 +128,15 @@ class RLTaskCRF:
         except KeyboardInterrupt:
             print('-' * 89)
             print('KeyboardInterrupt signal received. Exiting early from training.')
-    
+
     def test(self):
-        self.env_test_deterministic = self.create_valid_env(env_prefix='test_det', save_video=True, log_every_n_episodes=1)
+        self.env_test_deterministic = self.create_valid_env(env_prefix='test_det', save_video=True,
+                                                            log_every_n_episodes=1)
         self.env_test_stochastic = self.create_valid_env(env_prefix='test_sto', save_video=True, log_every_n_episodes=1)
 
         # Evaluate deterministic policy
-        reward_mean, reward_std, _, _ = evaluate_policy(self.model, self.env_test_deterministic, n_eval_episodes=20, deterministic=True)
+        reward_mean, reward_std, _, _ = evaluate_policy(self.model, self.env_test_deterministic, n_eval_episodes=20,
+                                                        deterministic=True)
         print(f"Mean deterministic reward = {reward_mean} +/- {reward_std}")
         helper_logs = {
             'eval_final/reward_det_mean': reward_mean,
@@ -96,7 +145,8 @@ class RLTaskCRF:
         self.helper.log(helper_logs, step=self.helper.state.step)
 
         # Evaluate stochastic policy
-        reward_mean, reward_std, _, _ = evaluate_policy(self.model, self.env_test_stochastic, n_eval_episodes=20, deterministic=False)
+        reward_mean, reward_std, _, _ = evaluate_policy(self.model, self.env_test_stochastic, n_eval_episodes=20,
+                                                        deterministic=False)
         print(f"Mean stochastic reward = {reward_mean} +/- {reward_std}")
         helper_logs = {
             'eval_final/reward_stoch_mean': reward_mean,

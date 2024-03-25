@@ -5,12 +5,14 @@ import tasks
 def register_args(parser: framework.helpers.ArgumentParser):
 
     # General
-    parser.add_argument('-task', default='crf_ppo')
+    parser.add_argument('-task', type=str, default=False)
     parser.add_argument('-profile_name', type=str, help='Train dir name')
     parser.add_argument('-keep_alive', default=False, help='After training end, keeps process alive (useful for looking at the TB logs)')
-    parser.add_argument('-seed', default='none', parser=parser.int_or_none_parser)
+    parser.add_argument('-seed', default=0, type=int)
     parser.add_argument('-gpu', default='auto', help='use this gpu')
     parser.add_argument('-wandb_project_name', default='crafter-ood')
+    parser.add_argument('-wandb_group', default='default')
+    parser.add_argument('-wandb_run_name', default='run-0')
     parser.add_argument('-logger.type', default='wandb')
     parser.add_argument('-logger.sb3.sync_tb', default=True)
     parser.add_argument('-logger.sb3.monitor_gym', default=True)
@@ -26,8 +28,8 @@ def register_args(parser: framework.helpers.ArgumentParser):
     parser.add_argument('-crf.max_ep_len', default=10_000)
     parser.add_argument('-crf.render_scoreboard', default=True)
     parser.add_argument('-crf.save_video', default=False)
-    parser.add_argument('-eval_n_steps', default=50_000)
-    parser.add_argument('-eval_n_episodes', default=5)
+    parser.add_argument('-eval_n_steps', default=10000)
+    parser.add_argument('-eval_n_episodes', default=30)
     parser.add_argument('-el_vars', default='')
     parser.add_argument('-el_freq_train', default='100,0,0,0')
     parser.add_argument('-el_freq_valid', default='100,0,0,0')
