@@ -18,6 +18,12 @@ def print_model_size(model):
     module_name = ""
     module_n_params = 0
     for name, param in model.named_parameters():
+        if module_name == '' and '.' not in name:
+            n_params = np.prod(param.size())
+            print('=' * line_len2, name, f"{n_params:,}", '=' * line_len2, '\n')
+            total_params += n_params
+            continue
+
         if module_name == "":
             module_name = name[:name.index('.')]
         if module_name != name[:name.index('.')]:

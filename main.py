@@ -10,7 +10,7 @@ def register_args(parser: framework.helpers.ArgumentParser):
     parser.add_argument('-keep_alive', default=False, help='After training end, keeps process alive (useful for looking at the TB logs)')
     parser.add_argument('-seed', default=0, type=int)
     parser.add_argument('-gpu', default='auto', help='use this gpu')
-    parser.add_argument('-wandb_project_name', default='crafter-ood')
+    parser.add_argument('-wandb_project_name', default='Test project')
     parser.add_argument('-wandb_group', default='default')
     parser.add_argument('-wandb_run_name', default='run-0')
     parser.add_argument('-logger.type', default='wandb')

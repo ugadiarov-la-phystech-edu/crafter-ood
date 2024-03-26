@@ -112,8 +112,7 @@ class I2SFeatureExtractor(BaseFeaturesExtractor):
         self.cnnmap_type = args.fe.cnnmap.type
         self.outmap_type = args.fe.outmap.type
         self.rsn_type = args.rsn.type
-        self.n_actions = action_space.n
-        
+
         self._features_dim = self.patch_size * self.patch_size * n_input_channels
         self.n_patches = 1
 

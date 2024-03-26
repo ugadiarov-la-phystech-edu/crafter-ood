@@ -3,11 +3,15 @@ import os
 import cv2
 import gym
 import numpy as np
+from gym.wrappers import TimeLimit
+from omegaconf import OmegaConf
+from stable_baselines3.common.monitor import Monitor
 
 # import crafter
 import shapes2d
 import stable_baselines3 as sb3
-from stable_baselines3.common.vec_env import VecFrameStack
+from cw_envs import CwTargetEnv
+from stable_baselines3.common.vec_env import VecFrameStack, SubprocVecEnv, DummyVecEnv
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.base_class import BaseAlgorithm
 
@@ -41,6 +45,19 @@ class FailOnTimelimitWrapper(gym.Wrapper):
         return observation, reward, done, info
 
 
+def make_reaching_env(seed, width, height):
+    def init():
+        env_config = OmegaConf.load('cw_envs/config/reaching-hard_orig.yaml')
+        env = CwTargetEnv(env_config, seed)
+        env.action_space.seed(seed)
+        env = WarpFrame(env, width, height)
+        env = TimeLimit(env, env.unwrapped._max_episode_length)
+        env = Monitor(env)
+        return env
+
+    return init
+
+
 class RLTaskCRF:
     def __init__(self, helper: framework.helpers.TrainingHelper):
         self.helper = helper
@@ -63,10 +80,13 @@ class RLTaskCRF:
 
     def create_single_env(self, env_prefix='train', seed=None, save_video=False, log_every_n_episodes=None, el_vars='',
                           el_freq='100,0,0,0', el_app_freq='sssss'):
-        env = gym.make(self.helper.args.task)
-        env = WarpFrame(env, width=self.helper.args.crf.size, height=self.helper.args.crf.size)
-        env = FailOnTimelimitWrapper(env)
-        env.seed(seed)
+        if self.helper.args.task == 'Reaching':
+            env = DummyVecEnv([make_reaching_env(seed, width=self.helper.args.crf.size, height=self.helper.args.crf.size)])
+        else:
+            env = gym.make(self.helper.args.task)
+            env = WarpFrame(env, width=self.helper.args.crf.size, height=self.helper.args.crf.size)
+            env = FailOnTimelimitWrapper(env)
+            env.seed(seed)
 
         env = BaseAlgorithm._wrap_env(env)
         env = VecFrameStack(env, n_stack=1, n_skip=1)
