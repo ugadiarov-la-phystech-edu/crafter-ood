@@ -16,7 +16,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.base_class import BaseAlgorithm
 
 import framework
-from robosuite import RobosuiteEnv
+from robo import RobosuiteEnv
 
 
 class WarpFrame(gym.ObservationWrapper):
