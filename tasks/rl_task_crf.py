@@ -29,7 +29,9 @@ class WarpFrame(gym.ObservationWrapper):
         )
 
     def observation(self, frame: np.ndarray) -> np.ndarray:
-        frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_CUBIC)
+        if frame.shape != self.observation_space.shape:
+            frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_CUBIC)
+
         return frame
 
 
