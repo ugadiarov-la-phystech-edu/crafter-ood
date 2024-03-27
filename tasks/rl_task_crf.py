@@ -16,6 +16,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.base_class import BaseAlgorithm
 
 import framework
+from robosuite import RobosuiteEnv
 
 
 class WarpFrame(gym.ObservationWrapper):
@@ -83,7 +84,11 @@ class RLTaskCRF:
     def create_single_env(self, env_prefix='train', seed=None, save_video=False, log_every_n_episodes=None, el_vars='',
                           el_freq='100,0,0,0', el_app_freq='sssss'):
         if self.helper.args.task == 'Reaching':
-            env = DummyVecEnv([make_reaching_env(seed, width=self.helper.args.crf.size, height=self.helper.args.crf.size)])
+            env = SubprocVecEnv([make_reaching_env(seed, width=self.helper.args.crf.size, height=self.helper.args.crf.size)])
+        elif self.helper.args.task.startswith('Robosuite'):
+            task = self.helper.args.task.split('_')[1]
+            env = RobosuiteEnv(task, horizon=125, seed=seed)
+            env = WarpFrame(env, width=self.helper.args.crf.size, height=self.helper.args.crf.size)
         else:
             env = gym.make(self.helper.args.task)
             env = WarpFrame(env, width=self.helper.args.crf.size, height=self.helper.args.crf.size)
