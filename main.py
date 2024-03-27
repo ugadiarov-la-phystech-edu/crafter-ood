@@ -104,12 +104,31 @@ def register_args(parser: framework.helpers.ArgumentParser):
             'fe.outmap.type': 'none',
             'fe.outmap.d_out': 64,
         }, include='ppo_cnn'),
+        
+        
+        parser.Profile('oc_sa_128', {
+            'crf.size': 128,
+            'rsn.type': 'oc_sa',
+            'fe.patch_size': 14,
+            'fe.patch_stride': 8,
+            'fe.precnn.type': 'cnn-sa',
+            'fe.cnnmap.type': 'patch-none',
+            'fe.cnnmap.d_out': 64,
+            'fe.outmap.type': 'none',
+            'fe.outmap.d_out': 64,
+        }, include='ppo_cnn'),
 
         parser.Profile('oc_ca', {
             'rsn.type': 'oc_ca',
             'fe.patch_size': 16,
             'fe.patch_stride': 16,
         }, include='oc_sa'),
+
+        parser.Profile('oc_ca_128', {
+            'rsn.type': 'oc_ca',
+            'fe.patch_size': 16,
+            'fe.patch_stride': 16,
+        }, include='oc_sa_128'),
     ])
 
 
