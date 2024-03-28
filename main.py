@@ -1,8 +1,11 @@
+import torch
+
 import framework
 import tasks
 
 
 def register_args(parser: framework.helpers.ArgumentParser):
+    torch.set_float32_matmul_precision('high')
 
     # General
     parser.add_argument('-task', type=str, default=False)
