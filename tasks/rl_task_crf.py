@@ -1,10 +1,10 @@
-import os
-
 import cv2
 import gym
 import numpy as np
 from gym.wrappers import TimeLimit
 from omegaconf import OmegaConf
+
+from maniskill import ManiSkillEnv
 from stable_baselines3.common.monitor import Monitor
 
 # import crafter
@@ -89,6 +89,9 @@ class RLTaskCRF:
             task = self.helper.args.task.split('_')[1]
             env = RobosuiteEnv(task, horizon=125, seed=seed)
             env = WarpFrame(env, width=self.helper.args.crf.size, height=self.helper.args.crf.size)
+        elif self.helper.args.task.startswith('ManiSkill'):
+            task = self.helper.args.task.split('_')[1]
+            env = ManiSkillEnv(task, seed=seed)
         else:
             env = gym.make(self.helper.args.task)
             env = WarpFrame(env, width=self.helper.args.crf.size, height=self.helper.args.crf.size)
